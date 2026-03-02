@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>📅 Generated Timetable</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+      .table th, .table td { vertical-align: middle; }
+      .free-cell { background-color: #ffeaa7; font-style: italic; color: #6c5ce7; }
+    </style>
+</head>
+<body style="background: url('/static/images1.jpg') no-repeat center center fixed; background-size: cover; min-height: 100vh; margin: 0; padding: 0; font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;">
+  <!-- Blurred background image layer -->
+  <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none;">
+    <img src="/static/images1.jpg" alt="background" style="width:100vw; height:100vh; object-fit:cover; filter: blur(6px); -webkit-filter: blur(6px);">
+  </div>
+  <!-- Content layer above blurred image -->
+  <div style="position: relative; z-index: 1;">
+    <!-- Only one title bar should be present -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background: linear-gradient(90deg, #434343 60%, #1e3c72 100%) !important; box-shadow: 0 2px 12px rgba(30,60,114,0.10);">
+      <div class="container">
+         <a class="navbar-brand mx-auto text-center w-100" style="font-size:2rem; font-weight:bold; letter-spacing:2px; color:#fff;" href="/dashboard">TIMETABLE SYSTEM</a>
+      </div>
+    </nav>
+    <div class="container mt-5 pt-4">
+      <h2 class="mb-4 text-center" style="font-weight:700; color:#222; text-shadow:none;">📅 Generated Timetable</h2>
+  <!-- Global edit control: choose class and edit -->
+  {% set class_options = class_day_list | map(attribute=0) | list | unique | list %}
+  {% set all_classes = class_options %}
+  {% if class_options|length > 0 %}
+  <div class="d-flex justify-content-center align-items-center mb-4" style="gap:10px; margin-top:48px; position:relative; z-index:2;">
+        <label class="mb-0">Edit timetable for:</label>
+        <select id="editClassSelect" class="form-select w-auto">
+          {% for cls in class_options %}
+            <option value="{{ cls }}">{{ cls }}</option>
+          {% endfor %}
+        </select>
+        <a id="editSelectedBtn" href="" class="btn btn-warning">Edit Selected Timetable</a>
+      </div>
+      <script>
+        (function(){
+          const select = document.getElementById('editClassSelect');
+          const btn = document.getElementById('editSelectedBtn');
+          function updateHref(){
+            const cls = encodeURIComponent(select.value);
+            btn.href = '/edit_timetable/' + cls;
+          }
+          select.addEventListener('change', updateHref);
+          updateHref();
+        })();
+      </script>
+      {% endif %}
+  {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+      {% for class_name in all_classes %}
+        <div class="card shadow mb-5">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h3>Class: {{ class_name }}</h3>
+                {% if is_admin and class_user_map.get(class_name) %}
+                  <div class="text-muted" style="font-size:1em;">Created by: <b>{{ class_user_map[class_name] }}</b></div>
+                {% endif %}
+              </div>
+              <!-- Show Edit button (always available) -->
+              <a href="{{ url_for('edit_timetable', class_name=class_name) }}" class="btn btn-warning">Edit</a>
+            </div>
+            {# Determine whether this class has mappings so the right CTA is shown below #}
+            {% set has_mapping = false %}
+            {% for row in data if row[3] == class_name %}{% set has_mapping = true %}{% endfor %}
+            {% if no_timetable_classes and class_name in no_timetable_classes %}
+              <div class="alert alert-danger text-center mb-4" role="alert">
+                ❌ No timetable created for class '{{ class_name }}'.
+              </div>
+              {# Check if there are mappings for this class #}
+              {% if has_mapping %}
+                <div class="text-center mb-3">
+                  <a href="/generate_college_timetable" class="btn btn-success">Generate Timetable</a>
+                </div>
+              {% else %}
+                <div class="text-center mb-3">
+                  <a href="/assign_staff_subject" class="btn btn-primary">Map Subjects/Staff</a>
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Day</th>
+                      {% for i in range(5) %}
+                        <th>Period {{ i + 1 }}</th>
+                      {% endfor %}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for day in days %}
+                    <tr>
+                      <td><strong>{{ days_map[day] }}</strong></td>
+                      {% for per in range(1, 6) %}
+                        <td>
+                          {% if timetable[(class_name, day)][per-1] == '-' %}
+                            <span class="free-cell">Free</span>
+                          {% else %}
+                            {{ timetable[(class_name, day)][per-1]|safe }}
+                          {% endif %}
+                        </td>
+                      {% endfor %}
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+      <div class="text-center mb-5">
+        <a href="/dashboard" class="btn btn-secondary me-2">⬅️ Back to Dashboard</a>
+        <form action="/download_timetable_pdf" method="get" class="d-inline">
+          <select name="download_type" class="form-select d-inline w-auto" style="display:inline-block;">
+            <option value="whole">Whole Timetable</option>
+            <option value="class">Class Timetable</option>
+            <option value="staff">Staff Timetable</option>
+          </select>
+          <input type="text" name="filter_value" class="form-control d-inline w-auto" style="display:inline-block;" placeholder="Enter class or staff name">
+          <input type="text" name="institution_name" class="form-control d-inline w-auto" style="display:inline-block;" placeholder="Enter Institution Name" required>
+          <button type="submit" class="btn btn-success ms-2">Download PDF</button>
+        </form>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </div>
+</body>
+</html>

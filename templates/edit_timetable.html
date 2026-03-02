@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+		<meta charset="UTF-8">
+		<title>Edit Timetable - {{ class_name }}</title>
+		<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+		<link rel="stylesheet" href="/static/style.css">
+</head>
+<body style="background: url('/static/images1.jpg') no-repeat center center fixed; background-size: cover; min-height: 100vh; margin: 0; padding: 0; font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;">
+	<div class="container mt-5 pt-4">
+		<div class="card shadow mb-5">
+			<div class="card-body">
+				<h2 class="mb-4 text-center">Edit Timetable for {{ class_name }}</h2>
+				<form method="post">
+					<div class="table-responsive">
+						<table class="table table-bordered table-striped align-middle">
+							<thead class="table-light">
+								<tr>
+									<th>Day</th>
+									{% for per in periods %}
+										<th>Period {{ per }}</th>
+									{% endfor %}
+								</tr>
+							</thead>
+							<tbody>
+								{% for day in days %}
+								<tr>
+									<td><strong>{{ day }}</strong></td>
+									{% for per in periods %}
+									<td>
+										<select name="subject_{{ day }}_{{ per }}" class="form-select mb-1">
+											<option value="">-- Subject --</option>
+											{% for subj in subjects %}
+												<option value="{{ subj }}" {% if timetable[(day, per)][0] == subj %}selected{% endif %}>{{ subj }}</option>
+											{% endfor %}
+										</select>
+										<select name="staff_{{ day }}_{{ per }}" class="form-select">
+											<option value="">-- Staff --</option>
+											{% set selected_subj = timetable[(day, per)][0] %}
+											{# First show the staff mapped to the selected subject (if any) #}
+											{% if selected_subj in subject_staff_map %}
+												{% for stf in subject_staff_map[selected_subj] %}
+													<option value="{{ stf }}" {% if timetable[(day, per)][1] == stf %}selected{% endif %}>{{ stf }}</option>
+												{% endfor %}
+											{% endif %}
+											{# Then show all other staff for the class (avoid duplicates) #}
+											{% for stf in staff_list %}
+												{% if not (selected_subj in subject_staff_map and stf in subject_staff_map[selected_subj]) %}
+													<option value="{{ stf }}" {% if timetable[(day, per)][1] == stf %}selected{% endif %}>{{ stf }}</option>
+												{% endif %}
+											{% endfor %}
+										</select>
+									</td>
+									{% endfor %}
+								</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					<div class="text-center mt-4">
+						<button type="submit" class="btn btn-success">Save Changes</button>
+						<a href="/view_timetable" class="btn btn-secondary ms-2">Cancel</a>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
